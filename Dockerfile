@@ -1,6 +1,7 @@
 FROM php:8.2-fpm-alpine
 
 RUN apk add --no-cache \
+    bash \
     nodejs \
     npm \
     freetype-dev \
@@ -8,9 +9,13 @@ RUN apk add --no-cache \
     libpng-dev \
     zip \
     libzip-dev \
-    unzip
+    unzip \
+    $PHPIZE_DEPS
 
-RUN docker-php-ext-install pdo pdo_mysql bcmath gd zip
+# Install PHP extensions including Redis
+RUN docker-php-ext-install pdo pdo_mysql bcmath gd zip \
+    && pecl install redis \
+    && docker-php-ext-enable redis
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

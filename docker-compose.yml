@@ -66,9 +66,27 @@ services:
     networks:
       - laravel-network
 
+ # phpMyAdmin  <-- THIS SHOULD BE HERE
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: laravel-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: sail
+      PMA_PASSWORD: password
+    depends_on:
+      - db
+    networks:
+      - laravel-network
+      
 networks:
   laravel-network:
     driver: bridge
 
 volumes:
   dbdata:
+
+  

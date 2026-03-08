@@ -1,0 +1,534 @@
+{
+	"info": {
+		"_postman_id": "news-feed-api-2024",
+		"name": "News Feed API - Laravel",
+		"description": "# News Feed Social Media API\n\n## Project Overview\nA social media news feed system built with Laravel 11, featuring:\n- User authentication with Laravel Sanctum\n- Follow/Unfollow users\n- Create, view, and delete posts\n- Like/Unlike posts\n- Personalized feed based on followed users\n- Real-time notifications using Redis queues\n\n## Tech Stack\n- **Framework:** Laravel 11\n- **Authentication:** Laravel Sanctum (Token-based)\n- **Database:** MySQL 8.0\n- **Cache/Queue:** Redis\n- **Testing:** PHPUnit (30 tests, 86 assertions)\n\n## Base URL\n- **Development:** `http://localhost:8000/api`\n- **Docker:** `http://localhost:8000/api`\n\n## Authentication\nAll endpoints (except Register and Login) require Bearer token authentication.\nAfter successful login/register, use the returned token in the `Authorization` header.\n\n## Module Dependencies\n1. **🔐 Authentication** - Required first to get access token\n2. **👥 Follow System** - Manages user relationships\n3. **📝 Posts** - Depends on authenticated user\n4. **📰 Feed** - Depends on Follow relationships and Posts\n5. **❤️ Likes** - Depends on Posts",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"description": "## Authentication Module\n\n### Purpose\nHandles user registration and login using Laravel Sanctum token-based authentication.\n\n### Dependencies\n- **None** - This is the starting point of the API\n\n### Relationships\n- Provides authentication tokens required for all other modules\n- Creates user accounts that can be used in Follow, Posts, Feed, and Likes modules\n\n### How It Works\n1. **Register:** Create a new user account and receive an authentication token\n2. **Login:** Authenticate existing users and receive a fresh token\n3. Token must be included in `Authorization: Bearer {token}` header for protected routes\n\n### Security\n- Passwords are hashed using bcrypt\n- Tokens are stored securely in the database\n- Email must be unique across all users",
+			"item": [
+				{
+					"name": "Register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    pm.collectionVariables.set(\"userId\", jsonData.user.id);",
+									"    console.log(\"✅ Token saved:\", jsonData.token);",
+									"    console.log(\"✅ User ID saved:\", jsonData.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\",\n    \"password\": \"password123\",\n    \"password_confirmation\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"register"
+							]
+						},
+						"description": "## Register New User\n\n### Description\nCreates a new user account in the system and returns an authentication token.\n\n### Authentication\n**Not Required** - This is a public endpoint\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Content-Type: application/json` - Required\n\n### Request Body (JSON)\n| Field | Type | Required | Description |\n|-------|------|----------|-------------|\n| `name` | string | Yes | User's full name (min: 3 chars) |\n| `email` | string | Yes | Valid email address (must be unique) |\n| `password` | string | Yes | Password (min: 8 characters) |\n| `password_confirmation` | string | Yes | Must match password |\n\n### Response Codes\n- **201 Created** - User registered successfully\n- **400 Bad Request** - Validation failed (missing/invalid fields)\n- **422 Unprocessable Entity** - Email already exists\n- **500 Internal Server Error** - Server error\n\n### Success Response (201)\n```json\n{\n    \"message\": \"User registered successfully.\",\n    \"user\": {\n        \"id\": 1,\n        \"name\": \"John Doe\",\n        \"email\": \"john@example.com\",\n        \"created_at\": \"2024-03-07T12:00:00.000000Z\"\n    },\n    \"token\": \"1|abc123xyz...\"\n}\n```\n\n### Error Response (422)\n```json\n{\n    \"message\": \"The email has already been taken.\",\n    \"errors\": {\n        \"email\": [\"The email has already been taken.\"]\n    }\n}\n```\n\n### Next Steps\n1. Save the returned `token` value\n2. Use this token in the `Authorization` header for all protected endpoints\n3. Format: `Bearer {token}`\n\n### Auto-Script\n✅ Automatically saves `token` and `userId` to collection variables"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    pm.collectionVariables.set(\"userId\", jsonData.user.id);",
+									"    console.log(\"✅ Token saved:\", jsonData.token);",
+									"    console.log(\"✅ User ID saved:\", jsonData.user.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"john@example.com\",\n    \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"login"
+							]
+						},
+						"description": "## Login Existing User\n\n### Description\nAuthenticates a user with email and password, returns a new authentication token.\n\n### Authentication\n**Not Required** - This is a public endpoint\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Content-Type: application/json` - Required\n\n### Request Body (JSON)\n| Field | Type | Required | Description |\n|-------|------|----------|-------------|\n| `email` | string | Yes | User's registered email address |\n| `password` | string | Yes | User's password |\n\n### Response Codes\n- **200 OK** - Login successful\n- **401 Unauthorized** - Invalid credentials (wrong email or password)\n- **400 Bad Request** - Validation failed (missing fields)\n- **500 Internal Server Error** - Server error\n\n### Success Response (200)\n```json\n{\n    \"message\": \"Login successful.\",\n    \"user\": {\n        \"id\": 1,\n        \"name\": \"John Doe\",\n        \"email\": \"john@example.com\",\n        \"created_at\": \"2024-03-07T12:00:00.000000Z\"\n    },\n    \"token\": \"2|xyz789abc...\"\n}\n```\n\n### Error Response (401)\n```json\n{\n    \"message\": \"Invalid credentials.\"\n}\n```\n\n### Important Notes\n- Each login generates a **new token**\n- Previous tokens remain valid unless explicitly revoked\n- Store the token securely on the client side\n- Token should be included in all subsequent requests\n\n### Auto-Script\n✅ Automatically saves `token` and `userId` to collection variables"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "👥 Follow System",
+			"description": "## Follow System Module\n\n### Purpose\nManages user relationships - allows users to follow and unfollow each other.\n\n### Dependencies\n- **🔐 Authentication Module** - Requires valid authentication token\n- User IDs must exist in the system\n\n### Relationships\n- **Used by 📰 Feed Module** - Feed shows posts from followed users\n- **Affects User Notifications** - Users receive notifications when someone follows them\n\n### How It Works\n1. **Suggest Users:** Get a list of users you're not following yet\n2. **Follow:** Creates a relationship where the authenticated user follows another user\n3. **Unfollow:** Removes the follow relationship\n4. Users cannot follow themselves (validation applied)\n5. Duplicate follows are prevented (returns 409 Conflict)\n\n### Database Structure\n- `follows` table with composite unique index on (follower_id, following_id)\n- Prevents duplicate follow relationships\n- Cascading deletes when users are removed\n\n### Business Rules\n- Users cannot follow themselves\n- Each follow relationship is unique (no duplicates)\n- Following is one-directional (A follows B doesn't mean B follows A)",
+			"item": [
+				{
+					"name": "Get Suggested Users",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.data && jsonData.data.length > 0) {",
+									"        pm.collectionVariables.set(\"suggestedUserId\", jsonData.data[0].id);",
+									"        console.log(\"✅ First suggested user ID saved:\", jsonData.data[0].id);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/users/suggestions?limit=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"users",
+								"suggestions"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"description": "Number of users to suggest (default: 10, max: 50)"
+								}
+							]
+						},
+						"description": "## Get Suggested Users to Follow\n\n### Description\nReturns a list of users that the authenticated user is not currently following. Perfect for discovering new users to follow.\n\n### Authentication\n**Required** - Bearer token in Authorization header\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Authorization: Bearer {token}` - Required (use token from login/register)\n\n### Query Parameters\n| Parameter | Type | Required | Default | Description |\n|-----------|------|----------|---------|-------------|\n| `limit` | integer | No | 10 | Number of users to return (max: 50) |\n\n### Response Codes\n- **200 OK** - Suggestions retrieved successfully\n- **401 Unauthorized** - Invalid or missing authentication token\n- **400 Bad Request** - Invalid limit parameter\n- **500 Internal Server Error** - Server error\n\n### Success Response (200)\n```json\n{\n    \"data\": [\n        {\n            \"id\": 5,\n            \"name\": \"Alice Johnson\",\n            \"email\": \"alice@example.com\",\n            \"created_at\": \"2024-03-07T10:30:00.000000Z\"\n        },\n        {\n            \"id\": 8,\n            \"name\": \"Bob Smith\",\n            \"email\": \"bob@example.com\",\n            \"created_at\": \"2024-03-07T11:15:00.000000Z\"\n        }\n    ]\n}\n```\n\n### Response Fields\n- `data`: Array of user objects\n- `id`: User ID (can be used in Follow endpoint)\n- `name`: User's full name\n- `email`: User's email address\n- `created_at`: Account creation timestamp\n\n### How It Works\n- Excludes the authenticated user\n- Excludes users already being followed\n- Returns random selection for variety\n- Limited to prevent performance issues\n\n### Use Case\n1. Call this endpoint to get suggested users\n2. Display the list to your user\n3. User selects which users to follow\n4. Call the Follow endpoint with the selected user IDs\n\n### Auto-Script\n✅ Automatically saves first suggested user's ID as `suggestedUserId` variable"
+					},
+					"response": []
+				},
+				{
+					"name": "Follow User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/follow/:userId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"follow",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "2",
+									"description": "ID of the user you want to follow"
+								}
+							]
+						},
+						"description": "## Follow a User\n\n### Description\nCreates a follow relationship where the authenticated user follows another user.\n\n### Authentication\n**Required** - Bearer token in Authorization header\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Authorization: Bearer {token}` - Required (use token from login/register)\n\n### URL Parameters\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| `userId` | integer | Yes | ID of the user to follow |\n\n### Response Codes\n- **201 Created** - User followed successfully\n- **409 Conflict** - Already following this user\n- **422 Unprocessable Entity** - Cannot follow yourself\n- **404 Not Found** - User with given ID doesn't exist\n- **401 Unauthorized** - Invalid or missing authentication token\n- **500 Internal Server Error** - Server error\n\n### Success Response (201)\n```json\n{\n    \"message\": \"User followed successfully.\"\n}\n```\n\n### Error Response (409)\n```json\n{\n    \"message\": \"Already following this user.\"\n}\n```\n\n### Error Response (422)\n```json\n{\n    \"message\": \"You cannot follow yourself.\"\n}\n```\n\n### Side Effects\n- Creates entry in `follows` table\n- May trigger notification to the followed user\n- Affects the authenticated user's feed (will see posts from followed user)"
+					},
+					"response": []
+				},
+				{
+					"name": "Unfollow User",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/follow/:userId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"follow",
+								":userId"
+							],
+							"variable": [
+								{
+									"key": "userId",
+									"value": "2",
+									"description": "ID of the user you want to unfollow"
+								}
+							]
+						},
+						"description": "## Unfollow a User\n\n### Description\nRemoves the follow relationship between the authenticated user and another user.\n\n### Authentication\n**Required** - Bearer token in Authorization header\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Authorization: Bearer {token}` - Required (use token from login/register)\n\n### URL Parameters\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| `userId` | integer | Yes | ID of the user to unfollow |\n\n### Response Codes\n- **200 OK** - User unfollowed successfully\n- **404 Not Found** - You are not following this user OR user doesn't exist\n- **401 Unauthorized** - Invalid or missing authentication token\n- **500 Internal Server Error** - Server error\n\n### Success Response (200)\n```json\n{\n    \"message\": \"User unfollowed successfully.\"\n}\n```\n\n### Error Response (404)\n```json\n{\n    \"message\": \"You are not following this user.\"\n}\n```\n\n### Side Effects\n- Deletes entry from `follows` table\n- Posts from unfollowed user will no longer appear in your feed\n- Does not affect historical data (likes, posts remain)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📝 Posts",
+			"description": "## Posts Module\n\n### Purpose\nAllows users to create, view, and delete their own posts.\n\n### Dependencies\n- **🔐 Authentication Module** - Requires valid authentication token\n- Each post is owned by a user\n\n### Relationships\n- **Used by 📰 Feed Module** - Posts appear in followers' feeds\n- **Used by ❤️ Likes Module** - Users can like/unlike posts\n- **Triggers Notifications** - Followers receive notifications when you create a post\n\n### How It Works\n1. **Create Post:** Authenticated user creates a new post with content\n2. **View Post:** Anyone (authenticated) can view any post by ID\n3. **Delete Post:** Only the post owner can delete their own post\n\n### Database Structure\n- `posts` table with user_id foreign key\n- Stores content (max 1000 characters)\n- Timestamps for created_at and updated_at\n- Includes likes_count cache column\n\n### Business Rules\n- Content is required (min: 1 char, max: 1000 chars)\n- Only post owner can delete their posts\n- Deleted posts remove associated likes (cascade)\n- Creating a post triggers notification job to followers",
+			"item": [
+				{
+					"name": "Create Post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"postId\", jsonData.post.id);",
+									"    console.log(\"✅ Post ID saved:\", jsonData.post.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\": \"This is my first post! Excited to share my thoughts with everyone.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						},
+						"description": "## Create a New Post\n\n### Description\nCreates a new post for the authenticated user. Triggers notifications to all followers.\n\n### Authentication\n**Required** - Bearer token in Authorization header\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Authorization: Bearer {token}` - Required\n- `Content-Type: application/json` - Required\n\n### Request Body (JSON)\n| Field | Type | Required | Description |\n|-------|------|----------|-------------|\n| `content` | string | Yes | Post content (min: 1 char, max: 1000 chars) |\n\n### Response Codes\n- **201 Created** - Post created successfully\n- **400 Bad Request** - Validation failed (missing/invalid content)\n- **401 Unauthorized** - Invalid or missing authentication token\n- **422 Unprocessable Entity** - Content exceeds max length\n- **500 Internal Server Error** - Server error\n\n### Success Response (201)\n```json\n{\n    \"message\": \"Post created successfully.\",\n    \"post\": {\n        \"id\": 1,\n        \"content\": \"This is my first post! Excited to share my thoughts with everyone.\",\n        \"likes_count\": 0,\n        \"created_at\": \"2024-03-07T12:00:00.000000Z\",\n        \"user\": {\n            \"id\": 1,\n            \"name\": \"John Doe\",\n            \"email\": \"john@example.com\"\n        }\n    }\n}\n```\n\n### Error Response (422)\n```json\n{\n    \"message\": \"The content field is required.\",\n    \"errors\": {\n        \"content\": [\"The content field is required.\"]\n    }\n}\n```\n\n### Side Effects\n- Creates entry in `posts` table\n- Queues notification job for all followers\n- Post will appear in followers' feeds immediately\n\n### Auto-Script\n✅ Automatically saves `postId` to collection variables"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Post by ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":postId"
+							],
+							"variable": [
+								{
+									"key": "postId",
+									"value": "{{postId}}",
+									"description": "ID of the post to retrieve"
+								}
+							]
+						},
+						"description": "## Get a Specific Post\n\n### Description\nRetrieves a single post by its ID, including author information and like status.\n\n### Authentication\n**Required** - Bearer token in Authorization header\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Authorization: Bearer {token}` - Required\n\n### URL Parameters\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| `postId` | integer | Yes | ID of the post to retrieve |\n\n### Response Codes\n- **200 OK** - Post retrieved successfully\n- **404 Not Found** - Post with given ID doesn't exist\n- **401 Unauthorized** - Invalid or missing authentication token\n- **500 Internal Server Error** - Server error\n\n### Success Response (200)\n```json\n{\n    \"post\": {\n        \"id\": 1,\n        \"content\": \"This is my first post! Excited to share my thoughts with everyone.\",\n        \"likes_count\": 5,\n        \"is_liked\": false,\n        \"created_at\": \"2024-03-07T12:00:00.000000Z\",\n        \"user\": {\n            \"id\": 1,\n            \"name\": \"John Doe\",\n            \"email\": \"john@example.com\"\n        }\n    }\n}\n```\n\n### Error Response (404)\n```json\n{\n    \"message\": \"Resource not found.\"\n}\n```\n\n### Response Fields\n- `is_liked`: Boolean indicating if the authenticated user has liked this post\n- `likes_count`: Total number of likes on this post\n- `user`: Post author information"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Post",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postId",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":postId"
+							],
+							"variable": [
+								{
+									"key": "postId",
+									"value": "{{postId}}",
+									"description": "ID of the post to delete (auto-filled from Create Post)"
+								}
+							]
+						},
+						"description": "## Delete a Post\n\n### Description\nDeletes a post. Only the post owner can delete their own posts.\n\n### Authentication\n**Required** - Bearer token in Authorization header\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Authorization: Bearer {token}` - Required\n\n### URL Parameters\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| `postId` | integer | Yes | ID of the post to delete |\n\n### Response Codes\n- **200 OK** - Post deleted successfully\n- **403 Forbidden** - Not authorized to delete this post (not the owner)\n- **404 Not Found** - Post with given ID doesn't exist\n- **401 Unauthorized** - Invalid or missing authentication token\n- **500 Internal Server Error** - Server error\n\n### Success Response (200)\n```json\n{\n    \"message\": \"Post deleted successfully.\"\n}\n```\n\n### Error Response (403)\n```json\n{\n    \"message\": \"You are not authorized to delete this post.\"\n}\n```\n\n### Side Effects\n- Deletes entry from `posts` table\n- Cascading delete removes all associated likes\n- Post will be removed from all feeds\n- Action cannot be undone"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📰 Feed",
+			"description": "## Feed Module\n\n### Purpose\nProvides a personalized feed of posts from users that the authenticated user follows.\n\n### Dependencies\n- **🔐 Authentication Module** - Requires valid authentication token\n- **👥 Follow System** - Feed shows posts from followed users\n- **📝 Posts Module** - Feed displays post data\n\n### Relationships\n- Aggregates data from Posts and Follow modules\n- Returns posts sorted by creation date (newest first)\n- Includes like status for each post relative to authenticated user\n\n### How It Works\n1. Retrieves all users that the authenticated user follows\n2. Fetches posts created by those users\n3. Orders posts by creation date (newest first)\n4. Includes pagination support\n5. Each post shows if the authenticated user has liked it\n\n### Database Optimization\n- Uses eager loading to prevent N+1 queries\n- Composite indexes on follows table for fast lookups\n- Redis caching for frequently accessed feeds\n- Efficient pagination with cursor-based approach\n\n### Business Rules\n- Only shows posts from followed users\n- Default pagination: 20 posts per page\n- Maximum pagination: 100 posts per page\n- If user follows no one, feed will be empty",
+			"item": [
+				{
+					"name": "Get Feed",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/feed?per_page=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"feed"
+							],
+							"query": [
+								{
+									"key": "per_page",
+									"value": "20",
+									"description": "Number of posts per page (default: 20, max: 100)"
+								}
+							]
+						},
+						"description": "## Get Personalized Feed\n\n### Description\nRetrieves a paginated feed of posts from users that the authenticated user follows, sorted by creation date (newest first).\n\n### Authentication\n**Required** - Bearer token in Authorization header\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Authorization: Bearer {token}` - Required\n\n### Query Parameters\n| Parameter | Type | Required | Default | Description |\n|-----------|------|----------|---------|-------------|\n| `per_page` | integer | No | 20 | Number of posts per page (max: 100) |\n\n### Response Codes\n- **200 OK** - Feed retrieved successfully\n- **401 Unauthorized** - Invalid or missing authentication token\n- **400 Bad Request** - Invalid pagination parameters\n- **500 Internal Server Error** - Server error\n\n### Success Response (200)\n```json\n{\n    \"data\": [\n        {\n            \"id\": 5,\n            \"content\": \"Just finished an amazing Laravel project!\",\n            \"likes_count\": 12,\n            \"is_liked\": true,\n            \"created_at\": \"2024-03-07T15:30:00.000000Z\",\n            \"user\": {\n                \"id\": 2,\n                \"name\": \"Jane Smith\",\n                \"email\": \"jane@example.com\"\n            }\n        },\n        {\n            \"id\": 3,\n            \"content\": \"Learning about Docker today!\",\n            \"likes_count\": 8,\n            \"is_liked\": false,\n            \"created_at\": \"2024-03-07T14:00:00.000000Z\",\n            \"user\": {\n                \"id\": 3,\n                \"name\": \"Bob Johnson\",\n                \"email\": \"bob@example.com\"\n            }\n        }\n    ],\n    \"links\": {\n        \"first\": \"http://localhost:8000/api/feed?page=1\",\n        \"last\": \"http://localhost:8000/api/feed?page=5\",\n        \"prev\": null,\n        \"next\": \"http://localhost:8000/api/feed?page=2\"\n    },\n    \"meta\": {\n        \"current_page\": 1,\n        \"from\": 1,\n        \"last_page\": 5,\n        \"per_page\": 20,\n        \"to\": 20,\n        \"total\": 95\n    }\n}\n```\n\n### Response Fields\n- `data`: Array of post objects\n- `is_liked`: Boolean indicating if authenticated user liked this post\n- `links`: Pagination links for navigation\n- `meta`: Pagination metadata\n\n### Important Notes\n- Feed only shows posts from users you follow\n- If you don't follow anyone, the feed will be empty\n- Posts are ordered by creation date (newest first)\n- Use `per_page` to control pagination size"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "❤️ Likes",
+			"description": "## Likes Module\n\n### Purpose\nAllows users to like and unlike posts, tracking engagement on content.\n\n### Dependencies\n- **🔐 Authentication Module** - Requires valid authentication token\n- **📝 Posts Module** - Can only like existing posts\n\n### Relationships\n- **Affects Feed Display** - Posts show like counts and user's like status\n- **Updates Post Statistics** - Maintains likes_count cache on posts\n\n### How It Works\n1. **Like:** Creates a like relationship between user and post\n2. **Unlike:** Removes the like relationship\n3. Duplicate likes are prevented (returns 409 Conflict)\n4. Returns updated like count after each action\n\n### Database Structure\n- `likes` table with composite unique index on (user_id, post_id)\n- Prevents duplicate likes from same user\n- Cascading deletes when user or post is removed\n- Updates post.likes_count cache column\n\n### Business Rules\n- Each user can like a post only once\n- Users can unlike posts they previously liked\n- Liking updates the post's likes_count immediately\n- Users can like their own posts\n- Like/unlike actions are idempotent (safe to retry)",
+			"item": [
+				{
+					"name": "Like Post",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postId/like",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":postId",
+								"like"
+							],
+							"variable": [
+								{
+									"key": "postId",
+									"value": "{{postId}}",
+									"description": "ID of the post to like (auto-filled from Create Post)"
+								}
+							]
+						},
+						"description": "## Like a Post\n\n### Description\nCreates a like on a post from the authenticated user. Updates the post's like count.\n\n### Authentication\n**Required** - Bearer token in Authorization header\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Authorization: Bearer {token}` - Required\n\n### URL Parameters\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| `postId` | integer | Yes | ID of the post to like |\n\n### Response Codes\n- **201 Created** - Post liked successfully\n- **409 Conflict** - Already liked this post\n- **404 Not Found** - Post with given ID doesn't exist\n- **401 Unauthorized** - Invalid or missing authentication token\n- **500 Internal Server Error** - Server error\n\n### Success Response (201)\n```json\n{\n    \"message\": \"Post liked successfully.\",\n    \"likes_count\": 6\n}\n```\n\n### Error Response (409)\n```json\n{\n    \"message\": \"Already liked this post.\"\n}\n```\n\n### Response Fields\n- `likes_count`: Updated total number of likes on this post\n\n### Side Effects\n- Creates entry in `likes` table\n- Increments post.likes_count by 1\n- May trigger notification to post owner\n- Affects feed display (is_liked becomes true)"
+					},
+					"response": []
+				},
+				{
+					"name": "Unlike Post",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postId/like",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":postId",
+								"like"
+							],
+							"variable": [
+								{
+									"key": "postId",
+									"value": "{{postId}}",
+									"description": "ID of the post to unlike (auto-filled from Create Post)"
+								}
+							]
+						},
+						"description": "## Unlike a Post\n\n### Description\nRemoves a like from a post for the authenticated user. Updates the post's like count.\n\n### Authentication\n**Required** - Bearer token in Authorization header\n\n### Request Headers\n- `Accept: application/json` - Required\n- `Authorization: Bearer {token}` - Required\n\n### URL Parameters\n| Parameter | Type | Required | Description |\n|-----------|------|----------|-------------|\n| `postId` | integer | Yes | ID of the post to unlike |\n\n### Response Codes\n- **200 OK** - Post unliked successfully\n- **404 Not Found** - You have not liked this post OR post doesn't exist\n- **401 Unauthorized** - Invalid or missing authentication token\n- **500 Internal Server Error** - Server error\n\n### Success Response (200)\n```json\n{\n    \"message\": \"Post unliked successfully.\",\n    \"likes_count\": 5\n}\n```\n\n### Error Response (404)\n```json\n{\n    \"message\": \"You have not liked this post.\"\n}\n```\n\n### Response Fields\n- `likes_count`: Updated total number of likes on this post\n\n### Side Effects\n- Deletes entry from `likes` table\n- Decrements post.likes_count by 1\n- Affects feed display (is_liked becomes false)\n- Action cannot be undone (but can like again)"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "postId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "suggestedUserId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

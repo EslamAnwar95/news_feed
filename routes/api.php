@@ -14,6 +14,7 @@ Route::post('/login', [AuthController::class, 'login']);
 // Authenticated routes
 Route::middleware('auth:sanctum')->group(function () {
     // Follow
+    Route::get('/users/suggestions', [FollowController::class, 'suggestUsers']);
     Route::post('/follow/{user}', [FollowController::class, 'follow']);
     Route::delete('/follow/{user}', [FollowController::class, 'unfollow']);
 

@@ -35,6 +35,23 @@ docker exec -it laravel-app composer setup
 
 # 6. (Optional) Seed test data
 docker exec -it laravel-app php artisan db:seed
+
+# 7. Access phpMyAdmin (database UI)
+# Add to docker-compose.yml under services:
+#   phpmyadmin:
+#     image: phpmyadmin/phpmyadmin
+#     container_name: laravel-phpmyadmin
+#     ports:
+#       - "8080:80"
+#     environment:
+#       PMA_HOST: db
+#       PMA_USER: sail
+#       PMA_PASSWORD: password
+#     depends_on:
+#       - db
+#     networks:
+#       - laravel-network
+# Then visit: http://localhost:8080
 ```
 
 ### Local (Laragon / Valet)
@@ -92,10 +109,16 @@ Response includes a `token` field — use it as `Authorization: Bearer <token>`.
 
 ### Follow System
 
-| Method | Endpoint            | Description    |
-|--------|-------------------- |----------------|
-| POST   | `/follow/{user_id}` | Follow user    |
-| DELETE | `/follow/{user_id}` | Unfollow user  |
+| Method | Endpoint              | Description                  |
+|--------|-----------------------|------------------------------|
+| GET    | `/users/suggestions`  | Get suggested users to follow |
+| POST   | `/follow/{user_id}`   | Follow user                  |
+| DELETE | `/follow/{user_id}`   | Unfollow user                |
+
+**Get Suggestions:** `GET /api/users/suggestions?limit=10`
+- Returns users the authenticated user is NOT following
+- Query param: `limit` (default: 10, max: 50)
+- Response includes `id`, `name`, `email`, `created_at`
 
 ### Posts
 
@@ -183,11 +206,19 @@ Uses Laravel's `cursorPaginate()` instead of `paginate()` (offset-based):
 ### Schema
 
 ```
-users: id, name, email, password, timestamps
+users: id, name, email, password, timestamps, deleted_at (soft delete)
 follows: id, follower_id, following_id, created_at
-posts: id, user_id, content, likes_count, timestamps
+posts: id, user_id, content, likes_count, timestamps, deleted_at (soft delete)
 likes: id, user_id, post_id, created_at
 ```
+
+### Soft Deletes
+
+The `users` and `posts` tables implement soft deletes:
+- **Users:** Allows account deactivation without losing data (posts, likes, follows preserved)
+- **Posts:** Allows post recovery and maintains referential integrity
+- Soft-deleted records are excluded from queries by default
+- Use `withTrashed()` or `onlyTrashed()` to access deleted records
 
 ### Index Strategy
 
@@ -264,6 +295,35 @@ Event-driven invalidation — caches are busted when the underlying data changes
 - **New post:** Feed cache auto-expires via short TTL
 - **Like/Unlike:** Denormalized counter is the source of truth; no cache needed
 
+### Verifying Redis Cache
+
+**Check if Redis extension is installed:**
+```bash
+docker exec laravel-app php -m | grep redis
+```
+
+**Test cache functionality via Tinker:**
+```bash
+docker exec laravel-app php artisan tinker --execute="use Illuminate\Support\Facades\Cache; Cache::put('test', 'working', 60); echo Cache::get('test');"
+```
+
+**Access Redis CLI directly:**
+```bash
+docker exec -it laravel-redis redis-cli
+
+# Inside Redis CLI:
+KEYS *                    # List all keys
+INFO memory               # Memory usage
+INFO keyspace             # Database statistics
+MONITOR                   # Real-time command monitoring
+```
+
+**Check cache configuration:**
+```bash
+docker exec laravel-app php artisan tinker --execute="echo config('cache.default');"
+# Should output: redis
+```
+
 ---
 
 ## Scaling Strategy (5M Users, 500K Posts/Day)
@@ -321,6 +381,24 @@ routes/
 tests/
   Feature/                  # Auth, Follow, Post, Feed, Like tests
 ```
+
+---
+
+## Postman Collection
+
+A complete Postman collection is included at `postman_collection.json`.
+
+### Features
+- **Auto-Scripts:** Token and IDs are automatically saved after login/register
+- **Variable Inheritance:** `{{token}}`, `{{userId}}`, `{{postId}}`, `{{suggestedUserId}}`
+- **Full Documentation:** Each endpoint includes descriptions, response codes, and examples
+
+### Import Instructions
+1. Open Postman
+2. Click **Import** → **Upload Files**
+3. Select `postman_collection.json`
+4. Set `baseUrl` variable to `http://localhost:8000/api`
+5. Run **Register** or **Login** first — token auto-saves!
 
 ---
 
